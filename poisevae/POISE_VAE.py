@@ -135,6 +135,9 @@ class POISEVAE(nn.Module):
         self.g12_hat = nn.Parameter(torch.randn(*self.latent_dims_flatten))
         self.g21_hat = nn.Parameter(torch.randn(*self.latent_dims_flatten))
         
+        self._dummy = nn.Parameter(torch.tensor(0.0))
+        
+        
     def set_mask_missing(self, mask_missing):
         self.mask_missing = mask_missing
         
@@ -203,6 +206,7 @@ class POISEVAE(nn.Module):
             x_rec_, neg_loglike_ = decoder(zi, x[i], **kwargs)
             if Gibbs_dim: # Gibbs dimension
                 x_rec_ = x_rec_.view(batch_size, n_samples, *x_rec_.shape[1:])
+                neg_loglike_ = neg_loglike_.view(batch_size, n_samples, *neg_loglike_.shape[1:])
             x_rec.append(x_rec_)
             
             if len(neg_loglike_.shape) > len_neg_loglike: # Not summing batch and Gibbs dims
@@ -226,21 +230,18 @@ class POISEVAE(nn.Module):
             z_posteriors, T_posteriors = self.gibbs.sample(G, nu1=param1, nu2=param2, 
                                                            batch_size=batch_size,
                                                            n_iterations=n_iterations)
-            kl = self.kl_div.calc(G, z_posteriors, z_priors, 
-                                  nu1=param1, nu2=param2)
+            kl = self.kl_div.calc(G, z_posteriors, z_priors, nu1=param1, nu2=param2)
             
         elif self.enc_config == 'mu/var':
             z_posteriors, T_posteriors = self.gibbs.sample(G, mu=param1, var=param2, 
                                                            batch_size=batch_size,
                                                            n_iterations=n_iterations)
-            kl = self.kl_div.calc(G, z_posteriors, z_priors, 
-                                  mu=param1, var=param2)
+            kl = self.kl_div.calc(G, z_posteriors, z_priors, mu=param1, var=param2)
         elif self.enc_config == 'mu/nu2':
             z_posteriors, T_posteriors = self.gibbs.sample(G, mu=param1, nu2=param2, 
                                                            batch_size=batch_size,
                                                            n_iterations=n_iterations)
-            kl = self.kl_div.calc(G, z_posteriors, z_priors, 
-                                  mu=param1, nu2=param2)
+            kl = self.kl_div.calc(G, z_posteriors, z_priors, mu=param1, nu2=param2)
             # if param1[0] is not None and param1[1] is not None:
             #     assert torch.isnan(param1[0]).sum() == 0
             #     assert torch.isnan(-0.5 / param2[0]).sum() == 0
@@ -260,9 +261,9 @@ class POISEVAE(nn.Module):
                                                                batch_size=batch_size,
                                                                n_iterations=n_iterations)
             nu = torch.cat([param1[0], param2[0]], -1) if param1[0] is not None else \
-                 torch.zeros(T_posteriors[0].shape[0], T_posteriors[0].shape[2]).to(self.device)
+                 torch.zeros(T_posteriors[0].shape[0], T_posteriors[0].shape[2]).to(self._dummy.device)
             nup = torch.cat([param1[1], param2[1]], -1) if param1[1] is not None else \
-                  torch.zeros(T_posteriors[1].shape[0], T_posteriors[1].shape[2]).to(self.device)
+                  torch.zeros(T_posteriors[1].shape[0], T_posteriors[1].shape[2]).to(self._dummy.device)
             
         elif self.enc_config == 'mu/var':
             with torch.no_grad():
@@ -270,9 +271,9 @@ class POISEVAE(nn.Module):
                                                                batch_size=batch_size,
                                                                n_iterations=n_iterations)
             nu = torch.cat([param1[0] / param2[0], -0.5 / param2[0]], -1) if param1[0] is not None else \
-                 torch.zeros(T_posteriors[0].shape[0], T_posteriors[0].shape[2]).to(self.device)
+                 torch.zeros(T_posteriors[0].shape[0], T_posteriors[0].shape[2]).to(self._dummy.device)
             nup = torch.cat([param1[1] / param2[1], -0.5 / param2[1]], -1) if param1[1] is not None else \
-                  torch.zeros(T_posteriors[1].shape[0], T_posteriors[1].shape[2]).to(self.device)
+                  torch.zeros(T_posteriors[1].shape[0], T_posteriors[1].shape[2]).to(self._dummy.device)
             assert torch.isnan(param1[0]).sum() == 0
             assert torch.isnan(-0.5 / param2[0]).sum() == 0
         elif self.enc_config == 'mu/nu2':
@@ -281,9 +282,9 @@ class POISEVAE(nn.Module):
                                                                batch_size=batch_size,
                                                                n_iterations=n_iterations)
             nu = torch.cat([-2 * param1[0] * param2[0], param2[0]], -1) if param1[0] is not None else \
-                 torch.zeros(T_posteriors[0].shape[0], T_posteriors[0].shape[2]).to(self.device)
+                 torch.zeros(T_posteriors[0].shape[0], T_posteriors[0].shape[2]).to(self._dummy.device)
             nup = torch.cat([-2 * param1[1] * param2[1], param2[1]], -1) if param1[1] is not None else \
-                  torch.zeros(T_posteriors[1].shape[1], T_posteriors[1].shape[2]).to(self.device)
+                  torch.zeros(T_posteriors[1].shape[1], T_posteriors[1].shape[2]).to(self._dummy.device)
             
         return z_priors, z_posteriors, T_priors, T_posteriors, [nu, nup]
     
@@ -353,7 +354,7 @@ class POISEVAE(nn.Module):
             
         # These will then be used for logging only. Don't waste CUDA memory!
         z_posteriors = [i[:, -1].detach().cpu() for i in z_posteriors]
-        x_rec = [i[0][:, -1].detach().cpu() for i in x_rec]
+        x_rec = [i[:, -1].detach().cpu() for i in x_rec] # -1 select the last Gibbs sample
         param1 = [i.detach().cpu() if i is not None else None for i in param1]
         param2 = [i.detach().cpu() if i is not None else None for i in param2]
         results = {
@@ -363,18 +364,24 @@ class POISEVAE(nn.Module):
         return results
 
     
-    def generate(self, n_samples, n_gibbs_iter=15):
+    def generate(self, n_samples, img_dims, n_gibbs_iter=15, dec_kwargs={}):
         self._batch_size = n_samples
         G = self.get_G()
-        _, t2 = self.get_t()
         
         nones = [None] * len(self.latent_dims)
         
-        z_posteriors, kl = self._sampling(G, nones, nones, t2, n_iterations=n_gibbs_iter)
-        x_rec = self.decode(z_posteriors, **dec_kwargs)
+        if self.KL_calc == 'derivative_gradient':
+            _, z_posteriors, _, _, _ = self._sampling_gradient(G, nones, nones, 
+                                                               n_iterations=n_gibbs_iter)
+        else:
+            z_posteriors, _ = self._sampling_autograd(G, nones, nones, 
+                                                       n_iterations=n_gibbs_iter)
+        
+        zeros = [torch.zeros(n_samples, *d) for d in img_dims]
+        x_rec, _ = self.decode(z_posteriors, zeros, **dec_kwargs)
         
         z_posteriors = [i[:, -1].detach().cpu() for i in z_posteriors]
-        x_rec = [i[0][:, -1].detach().cpu() for i in x_rec]
+        x_rec = [i[:, -1].detach().cpu() for i in x_rec]
         results = {'z': z_posteriors, 'x_rec': x_rec}
         
         return results

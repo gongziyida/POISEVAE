@@ -50,13 +50,13 @@ class KLDN01:
         
     def var_calc(self, T2, nu2):
         if nu2 is not None:
-            return -torch.reciprocal(2 * (-0.5 + nu2 + T2))
+            return -torch.reciprocal(2 * (-0.5 + nu2.unsqueeze(1) + T2))
         else:
             return -torch.reciprocal(2 * (-0.5 + T2))
     
     def mean_calc(self, T1, var, nu1):
         if nu1 is not None:
-            return var * (T1 + nu1)
+            return var * (T1 + nu1.unsqueeze(1))
         else:
             return var * (T1)
         
@@ -74,8 +74,8 @@ class KLDN01:
         nu1, nu2 = init_posterior(nu1, nu2, mu, var, self.enc_config)
         # nu1_, nu2_ = init_posterior(nu1_, nu2_, mu_, var_, self.enc_config)
         # nu1, nu2 = new_nu(nu1, nu1_), new_nu(nu2, nu2_)
-        part0 = self.value_calc(z[1], G.t(), nu1[0].unsqueeze(1), nu2[0].unsqueeze(1)).sum(dim=1)
-        part1 = self.value_calc(z[0], G, nu1[1].unsqueeze(1), nu2[1].unsqueeze(1)).sum(dim=1)
+        part0 = self.value_calc(z[1], G.t(), nu1[0], nu2[0]).sum(dim=1)
+        part1 = self.value_calc(z[0], G, nu1[1], nu2[1]).sum(dim=1)
         res = (part0 + part1) * 0.5
         if self.reduction == 'sum':
             return res.sum()
