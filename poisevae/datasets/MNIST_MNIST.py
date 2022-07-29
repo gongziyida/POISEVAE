@@ -4,7 +4,7 @@ import random
 import numpy as np
 import torch.nn.functional as F
 
-class MNIST(torch.utils.data.Dataset):
+class MNIST_MNIST(torch.utils.data.Dataset):
     def __init__(self, mnist_pt_path):
         self.mnist_pt_path = mnist_pt_path            
         # Load the pt for MNIST 
@@ -21,4 +21,4 @@ class MNIST(torch.utils.data.Dataset):
         mnist_img, mnist_target = self.mnist_data[index].view(-1)/255, int(self.mnist_targets[index])
         mnist_target = F.one_hot(torch.tensor(mnist_target),num_classes=10)
         # mnist_img = torch.cat((mnist_img,mnist_target),0)
-        return mnist_img, mnist_target
+        return mnist_img, mnist_img, mnist_target, mnist_target

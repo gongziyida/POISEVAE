@@ -35,7 +35,7 @@ class DecMNIST(nn.Module):
         self.mse_loss = nn.MSELoss(reduction='none')
         
     def forward(self, z, x):
-        rec = self.dec(z).to(x.device)
-        rec_loss = self.mse_loss(rec, x)
+        rec = self.dec(z)
+        rec_loss = self.mse_loss(rec, x) if x is not None else torch.zeros_like(rec)
 
         return rec, rec_loss

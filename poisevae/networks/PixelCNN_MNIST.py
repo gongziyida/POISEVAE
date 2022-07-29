@@ -26,11 +26,15 @@ class DecMNIST(nn.Module):
         super(DecMNIST, self).__init__()
         self.pixelcnn = pixelcnn
         self.color_level = color_level
-        self.ce_loss = nn.CrossEntropyLoss(reduction='sum')
+        self.ce_loss = nn.CrossEntropyLoss(reduction='none')
         self.mse_loss = nn.MSELoss(reduction='none')
         
     def forward(self, z, x, generate_mode):
-        x = x.reshape(z.shape[0], 1, 28, 28).to(z.device)
+        if x is not None:
+            x = x.reshape(z.shape[0], 1, 28, 28).to(z.device)
+        else:
+            x = torch.zeros(z.shape[0], 1, 28, 28).to(z.device)
+            
         if generate_mode is False:
             sample = self.pixelcnn(x, z)
             x = (x.flatten(-3, -1) * (self.color_level - 1)).floor().long()

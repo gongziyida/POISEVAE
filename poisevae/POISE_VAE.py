@@ -198,7 +198,7 @@ class POISEVAE(nn.Module):
         if Gibbs_dim:
             n_samples = z[0].shape[self.batched]
             z = [zi.flatten(0, 1) for zi in z]
-            x = [xi.repeat_interleave(n_samples, dim=0) for xi in x]
+            x = [xi.repeat_interleave(n_samples, dim=0) if xi is not None else None for xi in x]
             len_neg_loglike += 1
             
         for i, (decoder, zi, ld) in enumerate(zip(self.decoders, z, self.latent_dims)):
@@ -364,7 +364,7 @@ class POISEVAE(nn.Module):
         return results
 
     
-    def generate(self, n_samples, img_dims, n_gibbs_iter=15, dec_kwargs={}):
+    def generate(self, n_samples, n_gibbs_iter=15, dec_kwargs={}):
         self._batch_size = n_samples
         G = self.get_G()
         
@@ -377,8 +377,7 @@ class POISEVAE(nn.Module):
             z_posteriors, _ = self._sampling_autograd(G, nones, nones, 
                                                        n_iterations=n_gibbs_iter)
         
-        zeros = [torch.zeros(n_samples, *d) for d in img_dims]
-        x_rec, _ = self.decode(z_posteriors, zeros, **dec_kwargs)
+        x_rec, _ = self.decode(z_posteriors, nones, **dec_kwargs)
         
         z_posteriors = [i[:, -1].detach().cpu() for i in z_posteriors]
         x_rec = [i[:, -1].detach().cpu() for i in x_rec]

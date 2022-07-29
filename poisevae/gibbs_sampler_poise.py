@@ -68,7 +68,7 @@ class GibbsSampler:
         return new_z, T
         
             
-    def init_z(self, nu1, nu2, batch_size):
+    def init_z(self, nu1, nu2, batch_size, device):
         z = []
         for ld, nu1_i, nu2_i in zip(self.latent_dims, nu1, nu2):
             if (nu1_i is None) and (nu2_i is None): # the Nones come together
@@ -76,14 +76,14 @@ class GibbsSampler:
                     raise RuntimeError('batch_size must be specified for prior.')
                 var = torch.tensor(1)
                 mu = torch.tensor(0)
-                rand = torch.randn(batch_size, ld).detach()
+                rand = torch.randn(batch_size, ld).to(device)
             else:
                 # if not (nu2_i < 0).all():
                 #     raise ValueError('Invalid variance')
                 var = -torch.reciprocal(2 * (-0.5 + nu2_i))
                 mu = var * (nu1_i)
                 rand = torch.randn_like(mu)
-            z.append(mu + rand * torch.sqrt(var))
+            z.append((mu + rand * torch.sqrt(var)).to(device))
         return z
     
     
@@ -97,7 +97,8 @@ class GibbsSampler:
         if n_samples is None:
             n_samples = n_iterations
         
-        z1, z2 = self.init_z(nu1, nu2, batch_size=batch_size)
+        z1, z2 = self.init_z(nu1, nu2, batch_size=batch_size, device=G.device)
+        
         assert len(z1.shape) == 2
         assert len(z2.shape) == 2
         z = [torch.zeros(z1.shape[0], n_samples, z1.shape[1]).to(z1.device), 
