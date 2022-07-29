@@ -44,8 +44,6 @@ def train(model, joint_dataloader, optimizer, epoch, kl_weight, n_gibbs_iter, wr
     inputs
     rec
     '''
-    inputs, res = [], []
-    
     model.train()
     
     for k, data in enumerate(joint_dataloader):
@@ -65,11 +63,6 @@ def train(model, joint_dataloader, optimizer, epoch, kl_weight, n_gibbs_iter, wr
             torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad_norm)
         optimizer.step()
         _log(results, 'train', writer, epoch * len(joint_dataloader) + k)
-        
-        inputs.append(data)
-        res.append(results)
-        
-    return inputs, res
 
 
 def test(model, joint_dataloader, epoch, kl_weight, n_gibbs_iter, writer=None, 
@@ -97,8 +90,6 @@ def test(model, joint_dataloader, epoch, kl_weight, n_gibbs_iter, writer=None,
     inputs
     rec
     '''
-    inputs, res = [], []
-    
     model.eval()
     
     with torch.no_grad():
@@ -114,11 +105,7 @@ def test(model, joint_dataloader, epoch, kl_weight, n_gibbs_iter, writer=None,
                                 enc_kwargs=enc_kwargs, dec_kwargs=dec_kwargs)
 
             _log(results, 'test', writer, epoch * len(joint_dataloader) + k)
-            
-            inputs.append(data)
-            res.append(results)
-            
-    return inputs, res
+
 
 
 def save_latent_info(latent_info, path):
