@@ -15,7 +15,7 @@ class EncMNIST(nn.Module):
         self.enc_var_mnist = nn.Linear(128, latent_dim)
 
     def forward(self, x):
-        x = self.enc(x)
+        x = self.enc(x.flatten(-2, -1))
         mu_mnist = self.enc_mu_mnist(x)
         log_var_mnist = self.enc_var_mnist(x)
         return mu_mnist, log_var_mnist
@@ -37,8 +37,8 @@ class DecMNIST(nn.Module):
             
         if generate_mode is False:
             sample = self.pixelcnn(x, z)
-            x = (x.flatten(-3, -1) * (self.color_level - 1)).floor().long()
-            return sample, self.ce_loss(sample.flatten(-3, -1), x)
+            x = (x * (self.color_level - 1)).floor().long()
+            return sample, self.ce_loss(sample, x)
         else:
             shape = [1,28,28]
             sample = self.pixelcnn.sample(x, shape, z, x.device)
