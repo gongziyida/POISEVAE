@@ -15,6 +15,7 @@ class EncMNIST(nn.Module):
         self.enc_var_mnist = nn.Linear(128, latent_dim)
 
     def forward(self, x):
+        x = x.view(-1, self.dim_MNIST)
         x = self.enc(x)
         mu_mnist = self.enc_mu_mnist(x)
         log_var_mnist = self.enc_var_mnist(x)
@@ -36,6 +37,6 @@ class DecMNIST(nn.Module):
         
     def forward(self, z, x):
         rec = self.dec(z)
-        rec_loss = self.mse_loss(rec, x) if x is not None else torch.zeros_like(rec)
+        rec_loss = self.mse_loss(rec, x.view(-1, self.dim_MNIST)) if x is not None else torch.zeros_like(rec)
 
         return rec, rec_loss

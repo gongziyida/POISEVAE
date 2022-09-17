@@ -31,7 +31,7 @@ class KLGradient(torch.autograd.Function):
         """
         ctx.save_for_backward(G, nu, nup)
         ctx.T_p, ctx.Tp_p, ctx.T_q, ctx.Tp_q = T_p, Tp_p, T_q, Tp_q
-        return torch.tensor([0.0], requires_grad=True, device=G.device, dtype=G.dtype)
+        return torch.tensor([1.0], requires_grad=True, device=G.device, dtype=G.dtype)
 
     @staticmethod
     def backward(ctx, w):
@@ -77,7 +77,7 @@ class RecGradient(torch.autograd.Function):
         """
         ctx.save_for_backward(nu, nup)
         ctx.loglike, ctx.T_q, ctx.Tp_q = loglike.unsqueeze(-1), T_q, Tp_q
-        return torch.tensor([0.0], requires_grad=True, device=G.device, dtype=G.dtype)
+        return torch.tensor([1.0], requires_grad=True, device=G.device, dtype=G.dtype)
     @staticmethod
     def backward(ctx, w):
         with torch.no_grad():

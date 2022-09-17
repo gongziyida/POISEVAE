@@ -144,10 +144,10 @@ class POISEVAE(nn.Module):
     def get_G(self):
         g22 = -torch.exp(self.g22_hat)
         g12 = 2 / sqrt(self.latent_dims_flatten[0]) * \
-              torch.exp(self.g22_hat / 2 + log(0.5) / 2) * \
+              torch.exp(self.g22_hat / 2 + torch.log(torch.tensor(0.5)) / 2) * \
               torch.tanh(self.g12_hat) * 0.99
         g21 = 2 / sqrt(self.latent_dims_flatten[1]) * \
-              torch.exp(self.g22_hat / 2 + log(0.5) / 2) * \
+              torch.exp(self.g22_hat / 2 + torch.log(torch.tensor(0.5)) / 2) * \
               torch.tanh(self.g21_hat) * 0.99
         G = torch.cat((torch.cat((self.g11, g12), 1), torch.cat((g21, g22), 1)), 0)
         return G
